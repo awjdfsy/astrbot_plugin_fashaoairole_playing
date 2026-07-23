@@ -15,8 +15,14 @@
   "output_max_length": {
     "description": "AI单次输出最大字数",
     "type": "int",
-    "default": 200,
+    "default": 800,
     "hint": "超出部分会被截断"
+  },
+  "response_delay_seconds": {
+    "description": "AI回复延迟（秒），控制交互节奏",
+    "type": "float",
+    "default": 0.5,
+    "hint": "AI回复前等待的秒数，0为不延迟"
   },
   "session_timeout_minutes": {
     "description": "会话超时时间（分钟）",
