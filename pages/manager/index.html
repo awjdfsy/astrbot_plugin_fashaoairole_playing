@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>发烧AI管理面板</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-card: #f5f5f5;
+        --text: #1a1a1a;
+        --text-secondary: #666666;
+        --border: #e0e0e0;
+        --accent: #1976d2;
+        --danger: #d32f2f;
+        --success: #388e3c;
+        --warning: #f57c00;
+      }
+      [data-theme="dark"] {
+        --bg: #1a1a1a;
+        --bg-card: #2d2d2d;
+        --text: #e0e0e0;
+        --text-secondary: #999999;
+        --border: #404040;
+        --accent: #64b5f6;
+        --danger: #ef5350;
+        --success: #66bb6a;
+        --warning: #ffa726;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 24px;
+        line-height: 1.6;
+      }
+      h1 { font-size: 24px; margin-bottom: 8px; }
+      h2 { font-size: 18px; margin-bottom: 16px; }
+      .subtitle { color: var(--text-secondary); margin-bottom: 24px; }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .stat-card .value { font-size: 28px; font-weight: 700; }
+      .stat-card .label { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+      .table-wrap {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 24px;
+      }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 10px 14px; font-size: 14px; }
+      th { background: var(--bg); font-weight: 600; border-bottom: 1px solid var(--border); }
+      td { border-bottom: 1px solid var(--border); }
+      tr:last-child td { border-bottom: none; }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .badge-active { background: #e8f5e9; color: var(--success); }
+      .badge-inactive { background: #fce4ec; color: var(--danger); }
+      .badge-pending { background: #fff3e0; color: var(--warning); }
+      [data-theme="dark"] .badge-active { background: #1b5e20; color: #a5d6a7; }
+      [data-theme="dark"] .badge-inactive { background: #b71c1c; color: #ef9a9a; }
+      [data-theme="dark"] .badge-pending { background: #e65100; color: #ffcc80; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 14px;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .btn:hover { opacity: 0.85; }
+      .btn-danger { background: var(--danger); color: #fff; }
+      .btn-accent { background: var(--accent); color: #fff; }
+      #log-area {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-family: "Cascadia Code", "Fira Code", monospace;
+        font-size: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      #log-area .log-entry { padding: 2px 0; }
+      .log-warn { color: var(--warning); }
+      .log-error { color: var(--danger); }
+      .log-info { color: var(--text-secondary); }
+      .flex-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .mb16 { margin-bottom: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>发烧AI管理面板</h1>
+    <p class="subtitle">管理活跃用户、人格统计与运行状态</p>
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card"><div class="value" id="stat-active">-</div><div class="label">活跃用户</div></div>
+      <div class="stat-card"><div class="value" id="stat-total">-</div><div class="label">历史用户总数</div></div>
+      <div class="stat-card"><div class="value" id="stat-msg">-</div><div class="label">今日消息数</div></div>
+    </div>
+
+    <h2>活跃用户</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>用户ID</th><th>状态</th><th>当前人格</th><th>操作</th></tr></thead>
+        <tbody id="user-table-body"><tr><td colspan="4">加载中...</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="flex-row mb16">
+      <button class="btn btn-danger" id="btn-reset-all">重置所有用户</button>
+      <button class="btn btn-accent" id="btn-refresh">刷新</button>
+    </div>
+
+    <h2>实时日志</h2>
+    <div id="log-area"><div class="log-entry log-info">等待日志...</div></div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

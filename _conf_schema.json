@@ -1,0 +1,51 @@
+{
+  "provider": {
+    "description": "人格扮演使用的AI模型",
+    "type": "string",
+    "_special": "select_provider",
+    "hint": "选择已在WebUI中配置好的模型提供商，人格对话将使用此模型"
+  },
+  "default_persona": {
+    "description": "默认人格",
+    "type": "string",
+    "options": ["1-病娇", "2-绿茶", "3-傲娇小萝莉", "4-知心姐姐", "5-喊杂鱼的妹妹"],
+    "default": "1-病娇",
+    "hint": "用户首次进入发烧模式时的默认人格"
+  },
+  "output_max_length": {
+    "description": "AI单次输出最大字数",
+    "type": "int",
+    "default": 200,
+    "hint": "超出部分会被截断"
+  },
+  "session_timeout_minutes": {
+    "description": "会话超时时间（分钟）",
+    "type": "int",
+    "default": 30,
+    "hint": "超过此时间无互动自动退出发烧模式，0为不超时"
+  },
+  "enable_safety_filter": {
+    "description": "启用内容安全过滤",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后将过滤敏感词和违规内容"
+  },
+  "compliance_text": {
+    "description": "合规声明文本",
+    "type": "text",
+    "default": "此账号内容由AI生成，内容仅供参考，请仔细甄别。",
+    "hint": "首次使用时会显示此文本并要求用户确认"
+  },
+  "age_verification_required": {
+    "description": "启用年龄验证",
+    "type": "bool",
+    "default": true,
+    "hint": "关闭后不再要求年龄确认"
+  },
+  "persona_transition_enabled": {
+    "description": "启用切换过渡语",
+    "type": "bool",
+    "default": true,
+    "hint": "切换人格时是否输出过渡语描述"
+  }
+}
