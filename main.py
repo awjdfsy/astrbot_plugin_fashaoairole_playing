@@ -474,6 +474,40 @@ class FeversPlugin(Star):
         if text.startswith("/"):
             return
 
+        if state == "none":
+            has_compliance = await self._has_compliance(user_id)
+            if not has_compliance:
+                compliance_text = self.config.get(
+                    "compliance_text",
+                    "此账号内容由AI生成，内容仅供参考，请仔细甄别。",
+                )
+                age_required = self.config.get("age_verification_required", True)
+                msg = f"[发烧AI] {compliance_text}\n\n"
+                if age_required:
+                    msg += (
+                        "在使用本服务前，请确认：\n"
+                        "1. 你已年满18周岁\n"
+                        "2. 你已知悉并同意遵守《人工智能拟人化互动服务管理暂行办法》\n"
+                        "3. 你理解所有输出内容均为AI生成，不构成专业建议\n\n"
+                        "回复「已确认」以继续，回复「退出」取消。"
+                    )
+                else:
+                    msg += "回复「已确认」以继续，回复「退出」取消。"
+                await self._set_user_state(user_id, "awaiting_compliance")
+                yield event.plain_result(msg)
+            else:
+                await self._set_user_state(user_id, "awaiting_persona")
+                yield event.plain_result(
+                    "[发烧AI] 请选择人格（回复编号）：\n\n"
+                    "1. 病娇          - 极端占有欲，温柔与阴森切换\n"
+                    "2. 绿茶          - 表面温柔体贴，话里藏话\n"
+                    "3. 傲娇小萝莉    - 嘴硬心软，口是心非\n"
+                    "4. 知心姐姐      - 温柔治愈，包容倾听\n"
+                    "5. 喊杂鱼的妹妹  - 毒舌得意又黏人"
+                )
+            event.stop_event()
+            return
+
         messages = event.get_messages()
         if any(isinstance(m, Image) for m in messages):
             if state.startswith("active:"):
@@ -600,6 +634,14 @@ class FeversPlugin(Star):
                         f"User {user_id} in fever mode but active provider "
                         f"({current_provider}) differs from configured "
                         f"provider ({configured_provider})"
+                    )
+                # Warn if minimax provider used (known instability with abab6.5t-chat)
+                if "minimax" in current_provider.lower():
+                    logger.warning(
+                        f"Minimax provider ({current_provider}) is known to return "
+                        "HTTP 500 errors intermittently. If experiencing slow responses "
+                        "(~26s delay), switch the plugin 'provider' setting in WebUI "
+                        "to 'deepseek（发烧AI）/deepseek-chat' or another reliable provider."
                     )
             except Exception as e:
                 logger.debug(f"Provider check failed: {e}")
