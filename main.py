@@ -25,6 +25,9 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 PLUGIN_NAME = "astrbot_plugin_fashaoairole_playing"
 _LOG_SUBSCRIBERS: list[asyncio.Queue] = []
+_COMMAND_WORDS = frozenset({
+    "reset", "help", "status",
+})
 
 # ──────────────────── Persona Definitions ────────────────────
 
@@ -181,6 +184,7 @@ class FeversPlugin(Star):
         )
         self.plugin_data_path.mkdir(parents=True, exist_ok=True)
         self._state_cache: dict[str, str] = {}
+        self._processed_msg_ids: dict[str, list[str]] = {}
         self._safety_keywords = self._load_safety_keywords()
 
         # Register plugin page backend APIs
@@ -257,8 +261,11 @@ class FeversPlugin(Star):
 
     async def _set_user_state(self, user_id: str, state: str):
         """Set user's state and update cache."""
-        await self.put_kv_data(f"state_{user_id}", state)
         self._state_cache[user_id] = state
+        try:
+            await self.put_kv_data(f"state_{user_id}", state)
+        except Exception:
+            logger.debug(f"State persistence failed for {user_id}: {state}")
 
     async def _has_compliance(self, user_id: str) -> bool:
         """Check if user has completed compliance verification."""
@@ -299,7 +306,7 @@ class FeversPlugin(Star):
         state = await self._get_user_state(user_id)
 
         msg = (
-            "[发烧AI] 发烧AI角色扮演系统\n\n"
+            "发烧AI角色扮演系统\n\n"
             "可用命令：\n"
             "/fevers help   - 显示此帮助\n"
             "/fevers start  - 开始设置（合规验证→选择人格→聊天）\n"
@@ -338,7 +345,7 @@ class FeversPlugin(Star):
             )
             age_required = self.config.get("age_verification_required", True)
 
-            msg = f"[发烧AI] {compliance_text}\n\n"
+            msg = f"{compliance_text}\n\n"
             if age_required:
                 msg += (
                     "在使用本服务前，请确认：\n"
@@ -355,7 +362,7 @@ class FeversPlugin(Star):
         else:
             await self._set_user_state(user_id, "awaiting_persona")
             yield event.plain_result(
-                "[发烧AI] 请选择人格（回复编号）：\n\n"
+                "请选择人格（回复编号）：\n\n"
                 "1. 病娇          - 极端占有欲，温柔与阴森切换\n"
                 "2. 绿茶          - 表面温柔体贴，话里藏话\n"
                 "3. 傲娇小萝莉    - 嘴硬心软，口是心非\n"
@@ -367,7 +374,7 @@ class FeversPlugin(Star):
     @fevers.command("list")
     async def fevers_list(self, event: AstrMessageEvent):
         """列出所有人格"""
-        msg = "[发烧AI] 可用人格列表：\n\n"
+        msg = "可用人格列表：\n\n"
         for pid, persona in PERSONAS.items():
             msg += f"{pid}. {persona['name']} - {persona['description']}\n"
         msg += "\n使用 /fevers select <编号或名称> 切换人格"
@@ -389,7 +396,7 @@ class FeversPlugin(Star):
         persona_id = self._resolve_persona(persona)
         if persona_id is None:
             yield event.plain_result(
-                "[发烧AI] 未找到对应人格。请使用 /fevers list 查看可用人格。"
+                "未找到对应人格。请使用 /fevers list 查看可用人格。"
             )
             event.stop_event()
             return
@@ -407,7 +414,7 @@ class FeversPlugin(Star):
 
         if not state.startswith("active:"):
             yield event.plain_result(
-                f"[发烧AI] 已切换至「{persona['name']}」。\n"
+                f"已切换至「{persona['name']}」。\n"
                 "现在你可以和我聊天了。发送 /fevers exit 退出发烧模式。"
             )
         event.stop_event()
@@ -422,15 +429,15 @@ class FeversPlugin(Star):
             persona_id = state.split(":", 1)[1]
             persona = PERSONAS.get(persona_id, {})
             yield event.plain_result(
-                f"[发烧AI] 当前状态：已激活\n"
+                f"当前状态：已激活\n"
                 f"当前人格：{persona.get('name', '未知')}\n"
                 f"使用 /fevers select <编号> 切换人格\n"
                 f"使用 /fevers exit 退出发烧模式"
             )
         elif state == "none":
-            yield event.plain_result("[发烧AI] 当前未激活。发送 /fevers start 开始。")
+            yield event.plain_result("当前未激活。发送 /fevers start 开始。")
         else:
-            yield event.plain_result("[发烧AI] 正在进行设置流程，请按提示操作。")
+            yield event.plain_result("正在进行设置流程，请按提示操作。")
         event.stop_event()
 
     @fevers.command("exit")
@@ -447,16 +454,16 @@ class FeversPlugin(Star):
             if persona_name:
                 yield event.plain_result(
                     f"（{persona_name}轻轻挥手）再见啦，下次再来找我玩哦。\n"
-                    "[发烧AI] 已退出发烧模式。发送 /fevers start 重新开始。"
+                    "已退出发烧模式。发送 /fevers start 重新开始。"
                 )
             else:
                 yield event.plain_result(
-                    "[发烧AI] 已退出发烧模式。发送 /fevers start 重新开始。"
+                    "已退出发烧模式。发送 /fevers start 重新开始。"
                 )
         else:
             await self._set_user_state(user_id, "none")
             yield event.plain_result(
-                "[发烧AI] 已退出发烧模式。发送 /fevers start 重新开始。"
+                "已退出发烧模式。发送 /fevers start 重新开始。"
             )
         event.stop_event()
 
@@ -471,7 +478,17 @@ class FeversPlugin(Star):
         state = await self._get_user_state(user_id)
         text = event.message_str.strip()
 
-        if text.startswith("/"):
+        msg_id = event.message_obj.message_id
+        if msg_id:
+            recent = self._processed_msg_ids.get(user_id, [])
+            if msg_id in recent:
+                return
+            recent.append(msg_id)
+            if len(recent) > 5:
+                recent.pop(0)
+            self._processed_msg_ids[user_id] = recent
+
+        if text.startswith("/") or text.lower() in _COMMAND_WORDS:
             return
 
         if state == "none":
@@ -482,7 +499,7 @@ class FeversPlugin(Star):
                     "此账号内容由AI生成，内容仅供参考，请仔细甄别。",
                 )
                 age_required = self.config.get("age_verification_required", True)
-                msg = f"[发烧AI] {compliance_text}\n\n"
+                msg = f"{compliance_text}\n\n"
                 if age_required:
                     msg += (
                         "在使用本服务前，请确认：\n"
@@ -498,7 +515,7 @@ class FeversPlugin(Star):
             else:
                 await self._set_user_state(user_id, "awaiting_persona")
                 yield event.plain_result(
-                    "[发烧AI] 请选择人格（回复编号）：\n\n"
+                    "请选择人格（回复编号）：\n\n"
                     "1. 病娇          - 极端占有欲，温柔与阴森切换\n"
                     "2. 绿茶          - 表面温柔体贴，话里藏话\n"
                     "3. 傲娇小萝莉    - 嘴硬心软，口是心非\n"
@@ -524,7 +541,7 @@ class FeversPlugin(Star):
                 await self._set_compliance(user_id)
                 await self._set_user_state(user_id, "awaiting_persona")
                 yield event.plain_result(
-                    "[发烧AI] 感谢你的确认！请选择人格（回复编号）：\n\n"
+                    "感谢你的确认！请选择人格（回复编号）：\n\n"
                     "1. 病娇          - 极端占有欲，温柔与阴森切换\n"
                     "2. 绿茶          - 表面温柔体贴，话里藏话\n"
                     "3. 傲娇小萝莉    - 嘴硬心软，口是心非\n"
@@ -534,11 +551,11 @@ class FeversPlugin(Star):
             elif any(w in text for w in cancel_words):
                 await self._set_user_state(user_id, "none")
                 yield event.plain_result(
-                    "[发烧AI] 已取消。发送 /fevers start 重新开始。"
+                    "已取消。发送 /fevers start 重新开始。"
                 )
             else:
                 yield event.plain_result(
-                    "[发烧AI] 请回复「已确认」以同意服务条款并继续，"
+                    "请回复「已确认」以同意服务条款并继续，"
                     "或回复「退出」取消。"
                 )
             event.stop_event()
@@ -548,7 +565,7 @@ class FeversPlugin(Star):
             persona_id = self._resolve_persona(text)
             if persona_id is None:
                 yield event.plain_result(
-                    "[发烧AI] 请输入有效的编号（1-5）或人格名称。\n"
+                    "请输入有效的编号（1-5）或人格名称。\n"
                     "使用 /fevers list 查看可用人格。"
                 )
                 event.stop_event()
@@ -566,7 +583,7 @@ class FeversPlugin(Star):
                 "5": "（切换至杂鱼妹妹人格）（踮起脚尖俯视你，一脸得意）",
             }
             yield event.plain_result(
-                f"[发烧AI] 已选择「{persona['name']}」\n"
+                f"已选择「{persona['name']}」\n"
                 f"{transition_texts.get(persona_id, '')}"
             )
             event.stop_event()
@@ -576,7 +593,7 @@ class FeversPlugin(Star):
             if await self._check_timeout(user_id):
                 await self._set_user_state(user_id, "none")
                 yield event.plain_result(
-                    "[发烧AI] 会话已超时，已自动退出发烧模式。\n"
+                    "会话已超时，已自动退出发烧模式。\n"
                     "发送 /fevers start 重新开始。"
                 )
                 event.stop_event()
@@ -585,13 +602,13 @@ class FeversPlugin(Star):
             exit_words = ["退出", "退下", "exit"]
             if any(w in text for w in exit_words):
                 await self._set_user_state(user_id, "none")
-                msg = "[发烧AI] 已退出发烧模式。发送 /fevers start 重新开始。"
+                msg = "已退出发烧模式。发送 /fevers start 重新开始。"
                 persona_id = state.split(":", 1)[1]
                 persona = PERSONAS.get(persona_id)
                 if persona:
                     msg = (
                         f"（{persona['name']}轻轻挥手）再见啦，下次再来玩哦。\n"
-                        f"[发烧AI] 已退出发烧模式。发送 /fevers start 重新开始。"
+                        f"已退出发烧模式。发送 /fevers start 重新开始。"
                     )
                 yield event.plain_result(msg)
                 event.stop_event()

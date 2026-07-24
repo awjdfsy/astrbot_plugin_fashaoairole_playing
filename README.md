@@ -164,3 +164,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 - [AstrBot](https://github.com/AstrBotDevs/AstrBot) — 强大的 AI 助手框架
 - 所有参与测试和建议的朋友们 ❤️
+
+---
+
+<div align="center">
+
+![访问计数](https://count.moeyy.cn/@roleplaying?name=roleplaying&theme=moebooru&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
+
+</div>

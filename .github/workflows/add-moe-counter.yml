@@ -1,0 +1,45 @@
+name: Add Moe-Counter
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - '**.md'
+
+jobs:
+  add-counter:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Moe-Counter badge to markdown files
+        run: |
+          counter_url="https://count.moeyy.cn/@roleplaying?name=roleplaying&theme=moebooru&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto"
+          added=0
+          shopt -s globstar nullglob
+          for file in **/*.md; do
+            [[ "$file" == .github/* ]] && continue
+            if ! grep -q "count.moeyy.cn" "$file"; then
+              echo "" >> "$file"
+              echo '<div align="center">' >> "$file"
+              echo '' >> "$file"
+              echo "![访问计数](${counter_url})" >> "$file"
+              echo '' >> "$file"
+              echo '</div>' >> "$file"
+              echo "Added counter to: $file"
+              added=$((added + 1))
+            fi
+          done
+          echo "total_added=$added" >> "$GITHUB_OUTPUT"
+          if [ "$added" -eq 0 ]; then
+            echo "skip_commit=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit changes
+        if: steps.add-counter.outputs.skip_commit != 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: add Moe-Counter to markdown files [skip ci]"
+          commit_author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
